@@ -1,24 +1,45 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus, UseFilters, UsePipes, CacheKey, CacheTTL, UseInterceptors, CacheInterceptor } from '@nestjs/common';
 import { CreateJobDto} from './dto/create-job-dto';
 import { JobsService } from './jobs.service';
 import { Job } from './interfaces/job.interface';
+import { ValidationPipe } from '../pipes/validation.pipe';
+import { JobData } from '../decorators/jobdata.decorator';
+import { ValidationExceptionFilter } from '../filters/validation-extception.filter';
+import { BenchmarkInterceptor } from '../interceptors/benchmark.interceptor';
+
 
 @Controller('jobs')
+@UseInterceptors(CacheInterceptor, BenchmarkInterceptor)
 export class JobsController {
     constructor(private readonly jobsService : JobsService){}
 
     @Get()
+    @CacheKey('allJobs')
+    @CacheTTL(25)
     finadall(): Promise<Job[]> {
         return this.jobsService.findAll();
     }
 
     @Get(':id')
+    @CacheTTL(30)
     findOne(@Param('id') id) : Promise<Job> {
-        return this.jobsService.findOne(id);
+        return this.jobsService.findOne(id)
+            .then((result) => {
+                if(result) {
+                    return result;
+                }
+                else {
+                    throw new HttpException('Job not found', HttpStatus.NOT_FOUND);
+                }
+            })
+            .catch(() => {
+                throw new HttpException('Job not found', HttpStatus.NOT_FOUND);
+            });
     }
 
     @Post()
-    create(@Body() createJobDto : CreateJobDto): Promise<Job> {
+    @UseFilters(new ValidationExceptionFilter())
+    create(@Body(ValidationPipe) createJobDto : CreateJobDto): Promise<Job> {
         return this.jobsService.create(createJobDto);
     }
 
