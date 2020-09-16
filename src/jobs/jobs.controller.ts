@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus, UseFilters, UsePipes, CacheKey, CacheTTL, UseInterceptors, CacheInterceptor } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus, UseFilters, UsePipes, CacheKey, CacheTTL, UseInterceptors, CacheInterceptor, Render } from '@nestjs/common';
 import { CreateJobDto} from './dto/create-job-dto';
 import { JobsService } from './jobs.service';
 import { Job } from './interfaces/job.interface';
@@ -14,10 +14,13 @@ export class JobsController {
     constructor(private readonly jobsService : JobsService){}
 
     @Get()
+    @Render('jobs/index')
     @CacheKey('allJobs')
     @CacheTTL(25)
-    finadall(): Promise<Job[]> {
-        return this.jobsService.findAll();
+    root() {
+        return this.jobsService
+                   .findAll()
+                   .then((result) => result ? { jobs: result }: { jobs: [] });
     }
 
     @Get(':id')
